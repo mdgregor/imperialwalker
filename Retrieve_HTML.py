@@ -5,6 +5,27 @@ from threading import Thread
 from queue import Queue
 
 
+def main():
+
+    website_list = {
+        "CNN": "http://www.cnn.com",
+        "MSNBC": "http://www.msnbc.com",
+        "Fox News": "http://www.foxnews.com",
+        "Wall Street Journal": "http://www.wsj.com/",
+        "Foreign Affaris": "http://www.foreignaffairs.com/",
+        "The Moscow Times": "http://themoscowtimes.com/",
+        "Zeit Online": "http://www.zeit.de/index",
+        "The People's Daily": "http://en.people.cn/"
+    }
+    words = ["Trump", "Russia"]
+
+    data_search = Data_Search()
+
+    for word in words:
+        for key, value in website_list.items():
+            data_search.website_feeder(key, value, word)
+
+
 class Data_Search():
 
     def __init__(self):
@@ -38,7 +59,7 @@ class Data_Search():
             if link is None:
                 continue
             url = self.link_validation(web_url, link)
-            queue.put((instances, url, word)) # Put the instances list, url, and word for a single search in the queue.
+            queue.put((instances, url, word))  # Put the instances list, url, and word for a single search in the queue.
 
         queue.join()                    # Close out the queue/worker
 
@@ -87,27 +108,6 @@ class Data_Search():
             web_text = web_site.text
             words = len([m.start() for m in re.finditer(word, web_text)])
             instances.append({url: words})
-
-
-def main():
-
-    website_list = {
-        "CNN": "http://www.cnn.com",
-        "MSNBC": "http://www.msnbc.com",
-        "Fox News": "http://www.foxnews.com",
-        "Wall Street Journal": "http://www.wsj.com/",
-        "Foreign Affaris": "http://www.foreignaffairs.com/",
-        "The Moscow Times": "http://themoscowtimes.com/",
-        "Zeit Online": "http://www.zeit.de/index",
-        "The People's Daily": "http://en.people.cn/"
-    }
-    words = ["Trump", "Russia"]
-
-    data_search = Data_Search()
-
-    for word in words:
-        for key, value in website_list.items():
-            data_search.website_feeder(key, value, word)
 
 
 class Worker(Thread):
