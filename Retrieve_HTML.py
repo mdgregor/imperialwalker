@@ -3,7 +3,7 @@ import re
 from bs4 import BeautifulSoup
 from threading import Thread
 from queue import Queue
-
+import time
 
 def main():
 
@@ -15,9 +15,12 @@ def main():
         "Foreign Affaris": "http://www.foreignaffairs.com/",
         "The Moscow Times": "http://themoscowtimes.com/",
         "Zeit Online": "http://www.zeit.de/index",
-        "The People's Daily": "http://en.people.cn/"
+        "The People's Daily": "http://en.people.cn/",
+        "The New York Times": "http://www.nytimes.com/",
+        "Politico": "http://www.politico.com/",
+        "Huffington Post": "http://www.huffingtonpost.com/"
     }
-    words = ["Trump", "Russia"]
+    words = ["Putin"]
 
     data_search = Data_Search()
 
@@ -51,15 +54,16 @@ class Data_Search():
         # Removes duplicate links found
         all_links = set(all_links)
         queue = Queue()
-
-        for link in all_links:          # A separate Thread is created for each link. ONLY DO THIS WITH NETWORK TASKS
-            worker = Worker(queue)      # Instantiate the Worker class and initialize its queue
-            worker.daemon = True
-            worker.start()              # Start the Worker to work on the queue
+        for link in all_links:
             if link is None:
                 continue
             url = self.link_validation(web_url, link)
-            queue.put((instances, url, word))  # Put the instances list, url, and word for a single search in the queue.
+            queue.put((instances, url, word))
+
+        for thread in range(20):        # Create 20 threads and do the work
+            worker = Worker(queue)      # Instantiate the Worker class and initialize its queue
+            worker.daemon = True
+            worker.start()              # Start the Worker to work on the queue
 
         queue.join()                    # Close out the queue/worker
 
@@ -69,9 +73,9 @@ class Data_Search():
                 total_mentions += value
 
         print("{} is mentioned {} times on {} across {} links found on the home page.".format(word, total_mentions, website_name, len(instances)))
-        print("Number of failed urls: {}".format(len(self.failed_urls)))
-        failed_urls = set(self.failed_urls)
-        print("Failed URLS: {}".format(failed_urls))
+        # print("Number of failed urls: {}".format(len(self.failed_urls)))
+        # failed_urls = set(self.failed_urls)
+        # print("Failed URLS: {}".format(failed_urls))
 
     @staticmethod
     def link_validation(web_url, link):
@@ -100,9 +104,10 @@ class Data_Search():
         """
         try:
             web_site = requests.get(url)
-        except:
-            print(url)
-            self.failed_urls.append(url)
+            time.sleep(.1)
+        except Exception as error:
+            # print(url)
+            # print(error)
             return
         if web_site.status_code == 200:
             web_text = web_site.text
