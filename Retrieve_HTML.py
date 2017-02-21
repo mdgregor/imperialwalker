@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 from threading import Thread
 from queue import Queue
 import time
+import json
+
 
 def main():
 
@@ -18,9 +20,10 @@ def main():
         "The People's Daily": "http://en.people.cn/",
         "The New York Times": "http://www.nytimes.com/",
         "Politico": "http://www.politico.com/",
-        "Huffington Post": "http://www.huffingtonpost.com/"
+        "Huffington Post": "http://www.huffingtonpost.com/",
+        "CNBC": "http://www.cnbc.com",
     }
-    words = ["Putin"]
+    words = ["Trump"]
 
     data_search = Data_Search()
 
@@ -54,6 +57,7 @@ class Data_Search():
         # Removes duplicate links found
         all_links = set(all_links)
         queue = Queue()
+
         for link in all_links:
             if link is None:
                 continue
@@ -71,6 +75,12 @@ class Data_Search():
         for item in instances:
             for value in item.values():
                 total_mentions += value
+
+        with open(website_name, "w") as file:
+            file.write("{} is mentioned {} times on {} across {} links found on the home page.".format(word, total_mentions, website_name, len(instances)))
+            for item in instances:
+                file.write(json.dumps(item))
+                file.write("\n")
 
         print("{} is mentioned {} times on {} across {} links found on the home page.".format(word, total_mentions, website_name, len(instances)))
         # print("Number of failed urls: {}".format(len(self.failed_urls)))
