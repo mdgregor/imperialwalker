@@ -1,10 +1,10 @@
-import requests
 import re
-from bs4 import BeautifulSoup
-from threading import Thread
-from queue import Queue
 import time
-import json
+from queue import Queue
+from threading import Thread
+
+import requests
+from bs4 import BeautifulSoup
 
 
 def main():
@@ -14,7 +14,6 @@ def main():
         "MSNBC": "http://www.msnbc.com",
         "Fox News": "http://www.foxnews.com",
         "Wall Street Journal": "http://www.wsj.com/",
-        "Foreign Affaris": "http://www.foreignaffairs.com/",
         "The Moscow Times": "http://themoscowtimes.com/",
         "Zeit Online": "http://www.zeit.de/index",
         "The People's Daily": "http://en.people.cn/",
@@ -22,14 +21,14 @@ def main():
         "Politico": "http://www.politico.com/",
         "Huffington Post": "http://www.huffingtonpost.com/",
         "CNBC": "http://www.cnbc.com",
+        "Breitbart": "http://www.breitbart.com"
     }
-    words = ["Trump"]
+    words = ["Syria", "war"]
 
     data_search = Data_Search()
 
-    for word in words:
-        for key, value in website_list.items():
-            data_search.website_feeder(key, value, word)
+    for key, value in website_list.items():
+        data_search.website_feeder(key, value, words)
 
 
 class Data_Search():
@@ -37,12 +36,12 @@ class Data_Search():
     def __init__(self):
         self.failed_urls = []
 
-    def website_feeder(self, website_name, web_url, word):
+    def website_feeder(self, website_name, web_url, words):
         """
         Finds all instances of a word on a given website
         :param website_name: This should be obvious
         :param web_url: The root URL of the website/domain
-        :param word: The word being searched for inside of the html
+        :param words: The words being searched for inside of the html
         """
 
         result = requests.get(web_url)
@@ -62,7 +61,7 @@ class Data_Search():
             if link is None:
                 continue
             url = self.link_validation(web_url, link)
-            queue.put((instances, url, word))
+            queue.put((instances, url, words))
 
         for thread in range(20):        # Create 20 threads and do the work
             worker = Worker(queue)      # Instantiate the Worker class and initialize its queue
@@ -71,18 +70,26 @@ class Data_Search():
 
         queue.join()                    # Close out the queue/worker
 
-        total_mentions = 0
+        total_mentions = {}
+
+        for word in words:
+            total_mentions.update({word: 0})
+
         for item in instances:
-            for value in item.values():
-                total_mentions += value
+            for key1, value1 in item.items():
+                for key2, value2 in value1.items():
+                    for word in words:
+                        if key1 == word:
+                            current_mentions = total_mentions[word] + value2
+                            total_mentions.update({word: current_mentions})
 
-        with open(website_name, "w") as file:
-            file.write("{} is mentioned {} times on {} across {} links found on the home page.".format(word, total_mentions, website_name, len(instances)))
-            for item in instances:
-                file.write(json.dumps(item))
-                file.write("\n")
-
-        print("{} is mentioned {} times on {} across {} links found on the home page.".format(word, total_mentions, website_name, len(instances)))
+                            # with open("{}_{}".format(website_name, word), "w") as file:
+                            #     file.write("{} is mentioned {} times on {} across {} links found on the home page.".format(word, total_mentions, website_name, len(instances)))
+                            #     for item in instances:
+                            #         file.write(json.dumps(item))
+                            #         file.write("\n")
+        for key, value in total_mentions.items():
+            print("{} is mentioned {} times on {} across {} links found on the home page.".format(key, value, website_name, len(instances)))
         # print("Number of failed urls: {}".format(len(self.failed_urls)))
         # failed_urls = set(self.failed_urls)
         # print("Failed URLS: {}".format(failed_urls))
@@ -104,25 +111,24 @@ class Data_Search():
         else:
             return web_url + link
 
-    def search_site(self, instances, url, word):
+    def search_site(self, instances, url, words):
         """
         Searches a site for every occurrences found in the html.
 
         :param instances: List of occurrences found.
         :param url: The url that is being retrieved and searched
-        :param word: The word that is being search in the html
+        :param words: The words that are being search in the html
         """
         try:
             web_site = requests.get(url)
             time.sleep(.1)
         except Exception as error:
-            # print(url)
-            # print(error)
             return
         if web_site.status_code == 200:
             web_text = web_site.text
-            words = len([m.start() for m in re.finditer(word, web_text)])
-            instances.append({url: words})
+            for word in words:
+                found_words = len([m.start() for m in re.finditer(word, web_text)])
+                instances.append({word: {url: found_words}})
 
 
 class Worker(Thread):
@@ -134,8 +140,8 @@ class Worker(Thread):
 
     def run(self):
         while True:
-            instances, url, word = self.queue.get()
-            self.data_search.search_site(instances, url, word)
+            instances, url, words = self.queue.get()
+            self.data_search.search_site(instances, url, words)
             self.queue.task_done()
 
 if __name__ == "__main__":
