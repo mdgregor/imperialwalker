@@ -8,7 +8,6 @@ from bs4 import BeautifulSoup
 
 
 def main():
-
     website_list = {
         "CNN": "http://www.cnn.com",
         "MSNBC": "http://www.msnbc.com",
@@ -32,7 +31,6 @@ def main():
 
 
 class Data_Search():
-
     def __init__(self):
         self.failed_urls = []
 
@@ -63,12 +61,12 @@ class Data_Search():
             url = self.link_validation(web_url, link)
             queue.put((instances, url, words))
 
-        for thread in range(20):        # Create 20 threads and do the work
-            worker = Worker(queue)      # Instantiate the Worker class and initialize its queue
+        for thread in range(20):  # Create 20 threads and do the work
+            worker = Worker(queue)  # Instantiate the Worker class and initialize its queue
             worker.daemon = True
-            worker.start()              # Start the Worker to work on the queue
+            worker.start()  # Start the Worker to work on the queue
 
-        queue.join()                    # Close out the queue/worker
+        queue.join()  # Close out the queue/worker
 
         total_mentions = {}
 
@@ -83,16 +81,17 @@ class Data_Search():
                             current_mentions = total_mentions[word] + value2
                             total_mentions.update({word: current_mentions})
 
-                            # with open("{}_{}".format(website_name, word), "w") as file:
-                            #     file.write("{} is mentioned {} times on {} across {} links found on the home page.".format(word, total_mentions, website_name, len(instances)))
-                            #     for item in instances:
-                            #         file.write(json.dumps(item))
-                            #         file.write("\n")
+                            # self.write_to_files(instances, total_mentions, website_name, word)
+                            
         for key, value in total_mentions.items():
             print("{} is mentioned {} times on {} across {} links found on the home page.".format(key, value, website_name, len(instances)))
-        # print("Number of failed urls: {}".format(len(self.failed_urls)))
-        # failed_urls = set(self.failed_urls)
-        # print("Failed URLS: {}".format(failed_urls))
+
+    # def write_to_files(self, instances, total_mentions, website_name, word):
+    #     with open("{}_{}".format(website_name, word), "w") as file:
+    #         file.write("{} is mentioned {} times on {} across {} links found on the home page.".format(word, total_mentions, website_name, len(instances)))
+    #         for item in instances:
+    #             file.write(json.dumps(item))
+    #             file.write("\n")
 
     @staticmethod
     def link_validation(web_url, link):
@@ -132,7 +131,6 @@ class Data_Search():
 
 
 class Worker(Thread):
-
     def __init__(self, queue):
         Thread.__init__(self)
         self.queue = queue
@@ -143,6 +141,7 @@ class Worker(Thread):
             instances, url, words = self.queue.get()
             self.data_search.search_site(instances, url, words)
             self.queue.task_done()
+
 
 if __name__ == "__main__":
     main()
