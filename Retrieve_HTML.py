@@ -2,6 +2,7 @@ import re
 import time
 from queue import Queue
 from threading import Thread
+from operator import itemgetter
 
 import requests
 from bs4 import BeautifulSoup
@@ -22,13 +23,21 @@ def main():
         "CNBC": "http://www.cnbc.com",
         "Breitbart": "http://www.breitbart.com"
     }
-    words = ["Syria", "war"]
-
+    words = ["Trump"]
+    web_ratio = []
     data_search = Data_Search()
 
     for key, value in website_list.items():
-        data_search.website_feeder(key, value, words)
+        web_ratio.append(data_search.website_feeder(key, value, words))
 
+    for word in words:
+        organized_list = []
+        for item in web_ratio:
+            for value in item:
+                if value[1] == word:
+                    organized_list.append(value)
+        for item in sorted(organized_list, key=itemgetter(2), reverse=True):
+            print(f"{item[0]} ratio for the word {item[1]} is {item[2]:.4f} for each link")
 
 class Data_Search():
     def __init__(self):
@@ -61,7 +70,7 @@ class Data_Search():
             url = self.link_validation(web_url, link)
             queue.put((instances, url, words))
 
-        for thread in range(20):  # Create 20 threads and do the work
+        for thread in range(50):  # Create 50 threads and do the work
             worker = Worker(queue)  # Instantiate the Worker class and initialize its queue
             worker.daemon = True
             worker.start()  # Start the Worker to work on the queue
@@ -81,17 +90,17 @@ class Data_Search():
                             current_mentions = total_mentions[word] + value2
                             total_mentions.update({word: current_mentions})
 
-                            # self.write_to_files(instances, total_mentions, website_name, word)
-                            
+        ratio = []
         for key, value in total_mentions.items():
-            print("{} is mentioned {} times on {} across {} links found on the home page.".format(key, value, website_name, len(instances)))
+            try:
+                print("{} is mentioned {} times on {} across {} links found on the home page.".format(key, value,
+                                                                                                      website_name,
+                                                                                                      len(instances)))
+                ratio.append((website_name, key, value / len(instances)))
+            except ZeroDivisionError:
+                print(f"{website_name} blocked me for too many requests")
 
-    # def write_to_files(self, instances, total_mentions, website_name, word):
-    #     with open("{}_{}".format(website_name, word), "w") as file:
-    #         file.write("{} is mentioned {} times on {} across {} links found on the home page.".format(word, total_mentions, website_name, len(instances)))
-    #         for item in instances:
-    #             file.write(json.dumps(item))
-    #             file.write("\n")
+        return ratio
 
     @staticmethod
     def link_validation(web_url, link):
@@ -110,7 +119,8 @@ class Data_Search():
         else:
             return web_url + link
 
-    def search_site(self, instances, url, words):
+    @staticmethod
+    def search_site(instances, url, words):
         """
         Searches a site for every occurrences found in the html.
 
@@ -122,11 +132,12 @@ class Data_Search():
             web_site = requests.get(url)
             time.sleep(.1)
         except Exception as error:
+            # print(error)
             return
         if web_site.status_code == 200:
             web_text = web_site.text
             for word in words:
-                found_words = len([m.start() for m in re.finditer(word, web_text)])
+                found_words = len([m.start() for m in re.finditer(word.lower(), web_text.lower())])
                 instances.append({word: {url: found_words}})
 
 
